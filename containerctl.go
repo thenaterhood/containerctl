@@ -1,86 +1,94 @@
 package main
 
 import(
-        "fmt"
-        "path/filepath"
-        "os/exec"
-        "os"
+    "fmt"
+    "os"
+    "github.com/thenaterhood/containerctl/containerops"
 )
 
-func find_containers(paths []string) []string {
-
-        var containers, dirs []string
-
-        for _, path := range paths {
-                dirs, _ = filepath.Glob(path + "/*")
-                containers = append(containers, dirs...)
-
+func containerNameInSlice(s string, slice []*containerops.Container) bool {
+    for _, c := range slice {
+        if s == c.Name {
+            return true
         }
-        return containers
-}
-
-func run_machinectl_cmd(cmd, container string) {
-        _, err := exec.Command("machinectl " + cmd + " " + container).Output()
-
-        if err != nil {
-                fmt.Println(cmd + " failed on " + container)
-                fmt.Println(err)
-        }
-}
-
-func poweroff_containers(containers []string) {
-
-        for _, container := range containers {
-                run_machinectl_cmd("poweroff", container)
-        }
-}
-
-func poweron_containers(containers []string) {
-        for _, container := range containers {
-                run_machinectl_cmd("start", container)
-        }
-}
-
-func strInSlice(s string, slice []string) bool {
-        for _, str := range slice {
-                if s == str {
-                        return true
-                }
-        }
-        return false
+    }
+    return false
 }
 
 func main() {
-        paths := []string{"/var/lib/container"}
 
-        if len(os.Args) < 3 {
-                fmt.Println("Whoops! Too few arguments.")
-                os.Exit(1)
-        }
+    container_path := "/var/lib/container"
 
-        action := os.Args[1]
-        on_containers := os.Args[2:]
+    if len(os.Args) < 2 {
+        fmt.Println("Whoops! Too few arguments.")
+        os.Exit(1)
+    }
 
-        containers := find_containers(paths)
+    action := os.Args[1]
 
-        for _, rq_container := range on_containers {
-                if ! strInSlice(rq_container, containers) {
-                        fmt.Println(rq_container + " is not a known container.")
-                        os.Exit(1)
-                }
-        }
-
+    if len(os.Args) < 3 {
         switch action {
-                case
-                "poweron",
-                "start":
-                poweron_containers(on_containers)
-                break
-
-                case
-                "stop",
-                "poweroff":
-                poweroff_containers(on_containers)
-                break
+            case
+            "list":
+            for _, c := range containerops.Find(container_path) {
+                fmt.Println(c.Name)
+            }
         }
+        os.Exit(0)
+    }
+
+    on_containers := containerops.LoadMultiple(container_path, os.Args[2:])
+
+    switch action {
+        case
+        "create",
+        "make":
+        for _, c := range on_containers {
+          c.Create()
+        }
+        break
+
+        case
+        "install-arch":
+        for _, c := range on_containers {
+          fmt.Println("Installing archlinux into " + c.Name + "...")
+          c.InstallArch()
+        }
+        break
+
+        case
+        "install-debian":
+        for _, c := range on_containers {
+          fmt.Println("Installing debian sid into " + c.Name + os.Args[2])
+          c.Arch = "amd64"
+          c.Version = "sid"
+          c.InstallDebian()
+        }
+        break
+
+        case
+        "destroy",
+        "remove":
+        for _, c := range on_containers {
+          fmt.Println("Destroying " + os.Args[2])
+          c.Destroy()
+        }
+        break
+
+        case
+        "poweron",
+        "start":
+        for _, c := range on_containers {
+          c.Start()
+        }
+        break
+
+        case
+        "stop",
+        "poweroff":
+        for _, c := range on_containers {
+          c.Stop()
+        }
+        break
+    }
 }
