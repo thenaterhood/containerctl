@@ -6,15 +6,6 @@ import(
     "github.com/thenaterhood/containerctl/containerops"
 )
 
-func containerNameInSlice(s string, slice []*containerops.Container) bool {
-    for _, c := range slice {
-        if s == c.Name {
-            return true
-        }
-    }
-    return false
-}
-
 func main() {
 
     container_path := "/var/lib/container"
@@ -70,7 +61,7 @@ func main() {
         "destroy",
         "remove":
         for _, c := range on_containers {
-          fmt.Println("Destroying " + os.Args[2])
+          fmt.Println("Destroying " + c.Name)
           c.Destroy()
         }
         break
