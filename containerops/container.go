@@ -6,6 +6,7 @@ import(
     "os"
     "path"
     "path/filepath"
+    "strings"
     "github.com/thenaterhood/containerctl/systemd"
 )
 
@@ -16,6 +17,16 @@ type Container struct {
     Arch string
     Distro string
     Version string
+    Uuid string
+}
+
+func (c Container) createMachineId() {
+    dir := path.Join(c.Location, c.Name)
+
+    uuidbytes, _ := exec.Command("uuidgen").Output()
+    uuid := string(uuidbytes[:37])
+    machineid, _ := os.OpenFile(path.Join(dir, "etc", "machine-id"), os.O_WRONLY, 0600)
+    machineid.WriteString(strings.Replace(uuid, "-", "", -1))
 }
 
 func (c Container) Create() {
@@ -50,8 +61,27 @@ func (c Container) InstallDebian() {
     dir := path.Join(c.Location, c.Name)
     _, err := exec.Command("debootstrap", "--arch="+c.Arch, c.Version, dir).Output()
 
+    c.createMachineId()
+    c.aptInstall("dbus")
+    c.aptInstall("coreutils")
+    c.runCommand("/lib/systemd/systemd-sysv-install", "enable", "dbus")
+
     if err != nil {
         fmt.Println(err)
+    }
+}
+
+func (c Container) aptInstall(pkg string) {
+    c.runCommand("apt-get", "install", "-y", "--allow-unauthenticated", pkg)
+}
+
+func (c Container) runCommand(args ...string) {
+    dir := path.Join(c.Location, c.Name)
+    command := append([]string{"-D", dir}, args...)
+
+    out, err := exec.Command("systemd-nspawn", command...).Output()
+    if err != nil {
+      fmt.Printf("%s %s %s %s failed: %s\n, %s", "systemd-nspawn", "-D", dir, strings.Join(args, " "), err.Error(), out)
     }
 }
 

@@ -50,7 +50,7 @@ func main() {
         case
         "install-debian":
         for _, c := range on_containers {
-          fmt.Println("Installing debian sid into " + c.Name + os.Args[2])
+          fmt.Println("Installing debian sid into " + c.Name)
           c.Arch = "amd64"
           c.Version = "sid"
           c.InstallDebian()
