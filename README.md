@@ -5,7 +5,15 @@ Containerctl is a utility written in Go for working with systemd-nspawn containe
 
 Usage
 ------------
-The CLI is NOT finalized, but currently looks something like:
+
+Requirements
+------------
+* systemd
+* pacstrap (for creating Arch containers)
+* debootstrap (for creating Debian containers)
+
+
+The CLI is NOT finalized, but currently looks like:
 
 ```
 # Create and install an ArchLinux container named YourContainer
@@ -17,3 +25,9 @@ $ containerctl create-debian YourContainer
 # Destroy and delete a container (does NOT power it down first)
 $ containerctl destroy YourContainer
 ```
+
+License
+-----------
+Containerctl is licensed under the MIT license. The full license text can be found in the LICENSE file.
+
+If you find containerctl useful, use it regularly, or build something cool around it, please consider contributing, providing feedback or simply dropping a line to say that containerctl is useful to you. Feedback from users is what keeps open source projects strong.
