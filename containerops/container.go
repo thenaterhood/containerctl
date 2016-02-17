@@ -7,16 +7,16 @@ import(
     "path"
     "path/filepath"
     "strings"
+    "time"
     "github.com/thenaterhood/containerctl/systemd"
 )
 
 type Container interface {
-  New(name, location, uuid string, installed bool)
-  Destroy()
-  Create()
-  Start()
-  Stop()
-  Exec(args ...string)
+  Destroy() error
+  Create() error
+  Start() error
+  Stop() error
+  Exec(args ...string) error
 
   Name() string
   Location() string
@@ -49,13 +49,21 @@ func (c GenericContainer) Uuid() string {
   return c.uuid
 }
 
-func (c GenericContainer) Create() {
-    os.Mkdir(path.Join(c.Location(), c.Name()), 0700)
+func (c GenericContainer) Create() error {
+    err := os.Mkdir(path.Join(c.Location(), c.Name()), 0700)
+    return err
 }
 
-func (c GenericContainer) Destroy() {
-    dir := path.Join(c.Location(), c.Name())
-    os.RemoveAll(dir)
+func (c GenericContainer) Destroy() error {
+    err := c.Stop()
+    time.Sleep(100 * time.Millisecond)
+
+    if err == nil {
+      dir := path.Join(c.Location(), c.Name())
+      err = os.RemoveAll(dir)
+    }
+
+    return err
 }
 
 func (c GenericContainer) createMachineId() {
@@ -67,31 +75,36 @@ func (c GenericContainer) createMachineId() {
     machineid.WriteString(strings.Replace(uuid, "-", "", -1))
 }
 
-func (c GenericContainer) Exec(args ...string) {
+func (c GenericContainer) Exec(args ...string) error {
 
     dir := path.Join(c.Location(), c.Name())
     command := append([]string{"-D", dir}, args...)
 
-    out, err := exec.Command("systemd-nspawn", command...).Output()
+    _, err := exec.Command("systemd-nspawn", command...).Output()
     if err != nil {
-      fmt.Printf("%s %s %s %s failed: %s\n, %s", "systemd-nspawn", "-D", dir, strings.Join(args, " "), err.Error(), out)
+      err = fmt.Errorf("%s: %s %s", string(err.Error()), "systemd-nspawn", strings.Join(args, " "))
     }
+
+    return err
 }
 
-func (c GenericContainer) Start() {
-  if c.Installed() {
-    systemd.StartService(c.Name() + "-container")
-  } else {
-    fmt.Println(c.Name() + " does not have a system installed.")
+func (c GenericContainer) Start() error {
+
+  if ! c.Installed() {
+    return fmt.Errorf("%s %s", c.Name(), "does not have a system installed.")
   }
+
+  err := systemd.RunMachinectlCmd("start", c.Name())
+  return err
 }
 
-func (c GenericContainer) Stop() {
-  if c.Installed() {
-    systemd.RunMachinectlCmd("poweroff", c.Name())
-  } else {
-    fmt.Println(c.Name() + " does not have a system installed.")
+func (c GenericContainer) Stop() error {
+  if ! c.Installed() {
+    return fmt.Errorf("%s %s", c.Name(), "does not have a system installed.")
   }
+
+  err := systemd.RunMachinectlCmd("poweroff", c.Name())
+  return err
 }
 
 func Find(dir string) []Container {

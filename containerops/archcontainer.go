@@ -2,7 +2,6 @@ package containerops
 
 import(
   "fmt"
-  "os"
   "path"
   "os/exec"
 )
@@ -13,19 +12,21 @@ type ArchContainer struct {
 
 }
 
-func (c ArchContainer) Create() {
-
-    c.GenericContainer.Create()
+func (c ArchContainer) Create() error {
 
     if c.Installed() {
-        fmt.Println(c.Name() + " is already installed")
-        os.Exit(1)
+        return fmt.Errorf("%s %s", c.Name(), "is already installed")
     }
-    dir := path.Join(c.Location(), c.Name())
-    fmt.Println("Gonna pacstrap..." + dir)
-    _, err := exec.Command("pacstrap", "-c", "-d", dir, "base", "--ignore", "linux").Output()
+
+    err := c.GenericContainer.Create()
 
     if err != nil {
-        fmt.Println(err)
+      return err
     }
+
+    dir := path.Join(c.Location(), c.Name())
+    fmt.Println("Gonna pacstrap..." + dir)
+    _, err = exec.Command("pacstrap", "-c", "-d", dir, "base", "--ignore", "linux").Output()
+
+    return err
 }

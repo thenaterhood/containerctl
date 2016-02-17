@@ -6,14 +6,13 @@ import (
 )
 
 
-func StartService(container string) (bool, string) {
+func StartService(container string) (error, string) {
     out, err := exec.Command("systemctl", "start", container).Output()
 
     if err != nil {
-        fmt.Println("systemctl start failed on " + container)
-        fmt.Println(err)
-        return false, string(out)
+        err = fmt.Errorf("%s: %s %s", err, "systemctl start failed on", container)
+        return err, string(out)
     }
 
-    return true, string(out)
+    return nil, string(out)
 }
