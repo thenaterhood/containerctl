@@ -66,13 +66,19 @@ func (c GenericContainer) Destroy() error {
     return err
 }
 
-func (c GenericContainer) createMachineId() {
+func (c GenericContainer) createMachineId() error {
     dir := path.Join(c.Location(), c.Name())
 
-    uuidbytes, _ := exec.Command("uuidgen").Output()
-    uuid := string(uuidbytes[:37])
-    machineid, _ := os.OpenFile(path.Join(dir, "etc", "machine-id"), os.O_WRONLY, 0600)
-    machineid.WriteString(strings.Replace(uuid, "-", "", -1))
+    uuidbytes, err := exec.Command("uuidgen").Output()
+
+    if err == nil {
+      uuid := string(uuidbytes[:37])
+      var machineid *os.File
+      machineid, err = os.OpenFile(path.Join(dir, "etc", "machine-id"), os.O_WRONLY, 0600)
+      machineid.WriteString(strings.Replace(uuid, "-", "", -1))
+    }
+
+    return err
 }
 
 func (c GenericContainer) Exec(args ...string) error {

@@ -35,7 +35,10 @@ func (c DebianContainer) Create() error {
       return err
     }
 
-    c.createMachineId()
+    err = c.createMachineId()
+    if err != nil {
+      return err
+    }
 
     err = c.aptInstall("dbus")
     if err != nil {
