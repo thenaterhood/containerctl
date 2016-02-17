@@ -3,8 +3,8 @@ containerctl
 
 Containerctl is a utility written in Go for working with systemd-nspawn containers. It is not feature complete (you will still need to use machinectl and other manual commands) but is capable of creating, installing, and destroying Debian and ArchLinux containers.
 
-Usage
-------------
+**This software is not production ready and its API is subject to change until
+the release of v1.0.0+**
 
 Requirements
 ------------
@@ -12,6 +12,8 @@ Requirements
 * pacstrap (for creating Arch containers)
 * debootstrap (for creating Debian containers)
 
+Usage
+------------
 
 The CLI is NOT finalized, but currently looks like:
 
