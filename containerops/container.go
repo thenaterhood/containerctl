@@ -33,13 +33,6 @@ type GenericContainer struct {
     uuid string
 }
 
-func (c GenericContainer) New(name, location, uuid string, installed bool) {
-  c.name = name
-  c.location = location
-  c.uuid = uuid
-  c.installed = installed
-}
-
 func (c GenericContainer) Name() string {
   return c.name
 }
