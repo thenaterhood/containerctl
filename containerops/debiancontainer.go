@@ -21,7 +21,7 @@ func (c DebianContainer) New(name, location, uuid string, installed bool) {
 }
 
 func (c DebianContainer) aptInstall(pkg string) {
-    c.GenericContainer.Exec("apt-get", "install", "-y", "--allow-unauthenticated", pkg)
+    c.Exec("apt-get", "install", "-y", "--allow-unauthenticated", pkg)
 }
 
 func (c DebianContainer) Create() {
@@ -36,10 +36,10 @@ func (c DebianContainer) Create() {
     dir := path.Join(c.Location(), c.Name())
     _, err := exec.Command("debootstrap", "sid", dir).Output()
 
-    c.GenericContainer.createMachineId()
+    c.createMachineId()
     c.aptInstall("dbus")
     c.aptInstall("coreutils")
-    c.GenericContainer.Exec("/lib/systemd/systemd-sysv-install", "enable", "dbus")
+    c.Exec("/lib/systemd/systemd-sysv-install", "enable", "dbus")
 
     if err != nil {
         fmt.Println(err)
