@@ -22,7 +22,7 @@ func main() {
             case
             "list":
             for _, c := range containerops.Find(container_path) {
-                fmt.Println(c.Name)
+                fmt.Println(c.Name())
             }
         }
         os.Exit(0)
@@ -40,20 +40,22 @@ func main() {
         break
 
         case
-        "install-arch":
+        "create-arch":
         for _, c := range on_containers {
-          fmt.Println("Installing archlinux into " + c.Name + "...")
-          c.InstallArch()
+          fmt.Println("Installing archlinux into " + c.Name() + "...")
+          gc := containerops.ToGenericContainer(c)
+          ctr := containerops.ArchContainer{gc}
+          ctr.Create()
         }
         break
 
         case
-        "install-debian":
+        "create-debian":
         for _, c := range on_containers {
-          fmt.Println("Installing debian sid into " + c.Name)
-          c.Arch = "amd64"
-          c.Version = "sid"
-          c.InstallDebian()
+          fmt.Println("Installing debian sid into " + c.Name() + "...")
+          gc := containerops.ToGenericContainer(c)
+          ctr := containerops.DebianContainer{gc}
+          ctr.Create()
         }
         break
 
@@ -61,7 +63,7 @@ func main() {
         "destroy",
         "remove":
         for _, c := range on_containers {
-          fmt.Println("Destroying " + c.Name)
+          fmt.Println("Destroying " + c.Name())
           c.Destroy()
         }
         break

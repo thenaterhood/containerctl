@@ -10,18 +10,63 @@ import(
     "github.com/thenaterhood/containerctl/systemd"
 )
 
-type Container struct {
-    Name string
-    Location string
-    Installed bool
-    Arch string
-    Distro string
-    Version string
-    Uuid string
+type Container interface {
+  New(name, location, uuid string, installed bool)
+  Destroy()
+  Create()
+  Start()
+  Stop()
+  Exec(args ...string)
+
+  Name() string
+  Location() string
+  Installed() bool
+  Uuid() string
 }
 
-func (c Container) createMachineId() {
-    dir := path.Join(c.Location, c.Name)
+type GenericContainer struct {
+    Container
+
+    name string
+    location string
+    installed bool
+    uuid string
+}
+
+func (c GenericContainer) New(name, location, uuid string, installed bool) {
+  c.name = name
+  c.location = location
+  c.uuid = uuid
+  c.installed = installed
+}
+
+func (c GenericContainer) Name() string {
+  return c.name
+}
+
+func (c GenericContainer) Location() string {
+  return c.location
+}
+
+func (c GenericContainer) Installed() bool {
+  return c.installed
+}
+
+func (c GenericContainer) Uuid() string {
+  return c.uuid
+}
+
+func (c GenericContainer) Create() {
+    os.Mkdir(path.Join(c.Location(), c.Name()), 0700)
+}
+
+func (c GenericContainer) Destroy() {
+    dir := path.Join(c.Location(), c.Name())
+    os.RemoveAll(dir)
+}
+
+func (c GenericContainer) createMachineId() {
+    dir := path.Join(c.Location(), c.Name())
 
     uuidbytes, _ := exec.Command("uuidgen").Output()
     uuid := string(uuidbytes[:37])
@@ -29,54 +74,9 @@ func (c Container) createMachineId() {
     machineid.WriteString(strings.Replace(uuid, "-", "", -1))
 }
 
-func (c Container) Create() {
-    os.Mkdir(path.Join(c.Location, c.Name), 0700)
-}
+func (c GenericContainer) Exec(args ...string) {
 
-func (c Container) Destroy() {
-    dir := path.Join(c.Location, c.Name)
-    os.RemoveAll(dir)
-}
-
-func (c Container) InstallArch() {
-    if c.Installed {
-        fmt.Println(c.Name + " is already installed with " + c.Distro)
-        os.Exit(1)
-    }
-
-    dir := path.Join(c.Location, c.Name)
-    _, err := exec.Command("pacstrap", "-c", "-d", dir, "base", "--ignore", "linux").Output()
-
-    if err != nil {
-        fmt.Println(err)
-    }
-}
-
-func (c Container) InstallDebian() {
-    if c.Installed {
-        fmt.Println(c.Name + " is already installed with " + c.Distro)
-        os.Exit(1)
-    }
-
-    dir := path.Join(c.Location, c.Name)
-    _, err := exec.Command("debootstrap", "--arch="+c.Arch, c.Version, dir).Output()
-
-    c.createMachineId()
-    c.aptInstall("dbus")
-    c.aptInstall("coreutils")
-    c.runCommand("/lib/systemd/systemd-sysv-install", "enable", "dbus")
-
-    if err != nil {
-        fmt.Println(err)
-    }
-}
-
-func (c Container) aptInstall(pkg string) {
-    c.runCommand("apt-get", "install", "-y", "--allow-unauthenticated", pkg)
-}
-
-func (c Container) runCommand(args ...string) {
-    dir := path.Join(c.Location, c.Name)
+    dir := path.Join(c.Location(), c.Name())
     command := append([]string{"-D", dir}, args...)
 
     out, err := exec.Command("systemd-nspawn", command...).Output()
@@ -85,26 +85,26 @@ func (c Container) runCommand(args ...string) {
     }
 }
 
-func (c Container) Start() {
-  if c.Installed {
-    systemd.StartService(c.Name + "-container")
+func (c GenericContainer) Start() {
+  if c.Installed() {
+    systemd.StartService(c.Name() + "-container")
   } else {
-    fmt.Println(c.Name + " does not have a system installed.")
+    fmt.Println(c.Name() + " does not have a system installed.")
   }
 }
 
-func (c Container) Stop() {
-  if c.Installed {
-    systemd.RunMachinectlCmd("poweroff", c.Name)
+func (c GenericContainer) Stop() {
+  if c.Installed() {
+    systemd.RunMachinectlCmd("poweroff", c.Name())
   } else {
-    fmt.Println(c.Name + " does not have a system installed.")
+    fmt.Println(c.Name() + " does not have a system installed.")
   }
 }
 
-func Find(dir string) []*Container {
+func Find(dir string) []Container {
 
     var names []string
-    var containers []*Container
+    var containers []Container
 
     names, _ = filepath.Glob(dir + "/*")
     for _, name := range names {
@@ -117,30 +117,75 @@ func Find(dir string) []*Container {
     return containers
 }
 
-func Load(dir string) *Container {
+func Load(dir string) Container {
 
-    c := new(Container)
-    c.Location, c.Name = path.Split(dir)
+    location, name := path.Split(dir)
 
-    contents, _ := filepath.Glob(dir + "/*")
+    c := new(GenericContainer)
+    c.location = location
+    c.name = name
+    c.installed = false
 
-    if len(contents) == 0 {
-        c.Installed = false
+    release_files, _ := filepath.Glob(dir+"/etc/*-release")
 
-    } else {
-        c.Installed = true
+    if len(release_files) > 0 {
+      c.installed = true
+      release := release_files[0]
 
+      _, err := os.Stat(dir+"/etc/machine-id")
+      if err == nil {
+
+      }
+
+      switch release {
+        case
+        "os-release":
+
+        deb := new(DebianContainer)
+
+        deb.location = location
+        deb.installed = true
+        deb.name = name
+
+        return deb
+        break
+
+        case
+        "arch-release":
+
+        arch := new(ArchContainer)
+
+        arch.location = location
+        arch.installed = true
+        arch.name = name
+
+        return arch
+
+        break
+
+      }
     }
+
     return c
 }
 
-func LoadMultiple(dir string, names []string) []*Container {
+func LoadMultiple(dir string, names []string) []Container {
 
-  var loaded []*Container
+  var loaded []Container
 
   for _, name := range names {
     loaded = append(loaded, Load(path.Join(dir, name)))
   }
 
   return loaded
+}
+
+func ToGenericContainer(c Container) GenericContainer {
+  var ctr GenericContainer
+  ctr.location = c.Location()
+  ctr.name = c.Name()
+  ctr.uuid = c.Uuid()
+  ctr.installed = c.Installed()
+
+  return ctr
 }
