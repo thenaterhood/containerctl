@@ -10,6 +10,8 @@ import(
     "github.com/thenaterhood/containerctl/systemd"
 )
 
+// A generic container type, implementing basic methods for handling
+// systemd-nspawn containers.
 type GenericContainer struct {
     Container
 

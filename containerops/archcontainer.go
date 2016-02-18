@@ -12,6 +12,7 @@ type ArchContainer struct {
 
 }
 
+// Installs a base Arch install into a container directory using pacstrap
 func (c ArchContainer) Create() error {
 
     if c.Installed() {
@@ -25,7 +26,6 @@ func (c ArchContainer) Create() error {
     }
 
     dir := path.Join(c.Location(), c.Name())
-    fmt.Println("Gonna pacstrap..." + dir)
     _, err = exec.Command("pacstrap", "-c", "-d", dir, "base", "--ignore", "linux").Output()
 
     return err

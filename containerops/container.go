@@ -20,6 +20,10 @@ type Container interface {
   Uuid() string
 }
 
+// Finds directory-based containers stored in a particular directory
+// It accepts a string and returns []Container
+// This function will only check that what it found is a directory, not
+// that it is necessarily a valid container; it's assumed that it is.
 func Find(dir string) []Container {
 
     var names []string
@@ -36,6 +40,7 @@ func Find(dir string) []Container {
     return containers
 }
 
+// Loads a single container, given its full path.
 func Load(dir string) Container {
 
     location, name := path.Split(dir)
@@ -88,6 +93,8 @@ func Load(dir string) Container {
     return ctr
 }
 
+// Loads multiple containers, given a path and a slice of container
+// names. This function will load and return ONLY the containers requested.
 func LoadMultiple(dir string, names []string) []Container {
 
   var loaded []Container
@@ -99,6 +106,8 @@ func LoadMultiple(dir string, names []string) []Container {
   return loaded
 }
 
+// Converts any Container into a GenericContainer, which can be used
+// in converting a container to another type
 func ToGenericContainer(c Container) GenericContainer {
   var ctr GenericContainer
   ctr.location = c.Location()
@@ -109,6 +118,8 @@ func ToGenericContainer(c Container) GenericContainer {
   return ctr
 }
 
+// Loads the machine id from the container (<container>/etc/machine-id)
+// and returns it as a string.
 func getContainerUuid(c Container) string {
   location := path.Join(c.Location(), c.Name(), "etc", "machine-id")
   contents, err := ioutil.ReadFile(location)

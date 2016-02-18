@@ -17,6 +17,10 @@ func (c DebianContainer) aptInstall(pkg string) error {
     return err
 }
 
+// Specialized install function for Debian containers.
+// Runs debootstrap for a base install, then manually installs
+// dbus, coreutils, and a machine-id into the container to
+// make it usable as a standalone container.
 func (c DebianContainer) Create() error {
 
     if c.Installed() {
