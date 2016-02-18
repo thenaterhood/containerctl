@@ -24,7 +24,7 @@ $ containerctl create-arch YourContainer
 # Create and install a Debian container named YourContainer
 $ containerctl create-debian YourContainer
 
-# Destroy and delete a container (does NOT power it down first)
+# Stop, destroy, and delete a container
 $ containerctl destroy YourContainer
 ```
 

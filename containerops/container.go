@@ -55,14 +55,11 @@ func (c GenericContainer) Create() error {
 }
 
 func (c GenericContainer) Destroy() error {
-    err := c.Stop()
+    c.Stop()
     time.Sleep(100 * time.Millisecond)
 
-    if err == nil {
-      dir := path.Join(c.Location(), c.Name())
-      err = os.RemoveAll(dir)
-    }
-
+    dir := path.Join(c.Location(), c.Name())
+    err := os.RemoveAll(dir)
     return err
 }
 
