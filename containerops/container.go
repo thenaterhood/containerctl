@@ -1,6 +1,7 @@
 package containerops
 
 import(
+    "io/ioutil"
     "os"
     "path"
     "path/filepath"
@@ -38,53 +39,53 @@ func Find(dir string) []Container {
 func Load(dir string) Container {
 
     location, name := path.Split(dir)
-
-    c := new(GenericContainer)
-    c.location = location
-    c.name = name
-    c.installed = false
-
+    installed := false
     release_files, _ := filepath.Glob(dir+"/etc/*-release")
+    var release string
+    var ctr Container
 
     if len(release_files) > 0 {
-      c.installed = true
-      release := release_files[0]
-
-      _, err := os.Stat(dir+"/etc/machine-id")
-      if err == nil {
-
-      }
-
-      switch release {
-        case
-        "os-release":
-
-        deb := new(DebianContainer)
-
-        deb.location = location
-        deb.installed = true
-        deb.name = name
-
-        return deb
-        break
-
-        case
-        "arch-release":
-
-        arch := new(ArchContainer)
-
-        arch.location = location
-        arch.installed = true
-        arch.name = name
-
-        return arch
-
-        break
-
-      }
+      installed = true
+      release = release_files[0]
     }
 
-    return c
+    switch release {
+      case
+      "os-release":
+
+      deb := new(DebianContainer)
+
+      deb.location = location
+      deb.installed = installed
+      deb.name = name
+      deb.uuid = getContainerUuid(deb)
+
+      ctr = deb
+
+      case
+      "arch-release":
+
+      arch := new(ArchContainer)
+
+      arch.location = location
+      arch.installed = installed
+      arch.name = name
+      arch.uuid = getContainerUuid(arch)
+
+      ctr = arch
+
+      default:
+        gctr := new(GenericContainer)
+
+        gctr.location = location
+        gctr.installed = installed
+        gctr.name = name
+        gctr.uuid = getContainerUuid(gctr)
+
+        ctr = gctr
+    }
+
+    return ctr
 }
 
 func LoadMultiple(dir string, names []string) []Container {
@@ -106,4 +107,16 @@ func ToGenericContainer(c Container) GenericContainer {
   ctr.installed = c.Installed()
 
   return ctr
+}
+
+func getContainerUuid(c Container) string {
+  location := path.Join(c.Location(), c.Name(), "etc", "machine-id")
+  contents, err := ioutil.ReadFile(location)
+  var uuidstr string
+
+  if err == nil {
+    uuidstr = string(contents)
+  }
+
+  return uuidstr
 }
