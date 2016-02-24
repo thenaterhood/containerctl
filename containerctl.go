@@ -5,6 +5,7 @@ import(
     "os"
     "os/exec"
     "github.com/thenaterhood/containerctl/containerops"
+    "github.com/thenaterhood/containerctl/system"
 )
 
 func main() {
@@ -18,7 +19,13 @@ func main() {
 
     action := os.Args[1]
 
-    on_containers := containerops.LoadMultiple(container_path, os.Args[2:])
+    ctr_start_index := 2
+
+    if action == "copy-user" {
+      ctr_start_index += 1
+    }
+
+    on_containers := containerops.LoadMultiple(container_path, os.Args[ctr_start_index:])
 
     switch action {
         case
@@ -30,7 +37,23 @@ func main() {
             fmt.Println(err)
           }
         }
-        break
+
+        case
+        "copy-user":
+        known_users := system.LoadUsers("/")
+        user := known_users.Find(os.Args[2])
+        if user == nil {
+          fmt.Println("User does not exist on host")
+          break
+        }
+
+        for _, c := range on_containers {
+          err := c.UpdateUser(user)
+          if err != nil {
+            fmt.Println(err)
+          }
+        }
+
 
         case
         "create-arch":
@@ -43,7 +66,6 @@ func main() {
             fmt.Println(err)
           }
         }
-        break
 
         case
         "create-debian":
@@ -56,7 +78,6 @@ func main() {
             fmt.Println(err)
           }
         }
-        break
 
         case
         "destroy",
@@ -68,7 +89,6 @@ func main() {
             fmt.Println(err)
           }
         }
-        break
 
         case
         "poweron",
@@ -79,7 +99,6 @@ func main() {
             fmt.Println(err)
           }
         }
-        break
 
         case
         "stop",
@@ -90,7 +109,6 @@ func main() {
             fmt.Println(err)
           }
         }
-        break
 
         default:
           out, _ := exec.Command("machinectl", os.Args[1:]...).Output()

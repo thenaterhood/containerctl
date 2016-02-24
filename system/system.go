@@ -5,34 +5,95 @@ import(
     "io"
     "encoding/csv"
     "log"
-    "strconv"
+    "regexp"
+    "bufio"
+    "strings"
+    "fmt"
+    "path"
 )
 
-type PasswdEntry struct {
-    Name string
-    Uid int
-    Gid int
-    Shell string
-    Fullname string
-    Home string
-}
-
 type OSUser struct {
-    ShadowEntry []string
-    PasswdEntry []string
+    shadowEntry []string
+    passwdEntry []string
 }
 
-type OSGroup struct {
-    GroupEntry []string
+func (o OSUser) Username() string {
+  return o.shadowEntry[0]
 }
 
-func LoadUsers(root string) []*OSUser {
-  var users []*OSUser
+type OSUsers []*OSUser
+
+func (o OSUsers) Find(username string) *OSUser {
+  var user *OSUser
+
+  for _, u := range o {
+    if u.Username() == username {
+      user = u
+      break
+    }
+  }
+
+  return user
+}
+
+func (o OSUser) BuildEtcShadowEntry() string {
+  return strings.Join(o.shadowEntry, ":")
+}
+
+func (o OSUser) BuildEtcPasswdEntry() string {
+  return strings.Join(o.passwdEntry, ":")
+}
+
+func (o OSUser) UpdateEntry(root string) error {
+  shadowpath := path.Join(root, "etc", "shadow")
+  passwdpath := path.Join(root, "etc", "passwd")
+
+  fmt.Println(shadowpath)
+
+  shadowf, serr := os.OpenFile(shadowpath, os.O_RDWR|os.O_APPEND, 0600)
+  passwdf, perr := os.OpenFile(passwdpath, os.O_RDWR|os.O_APPEND, 0600)
+  defer shadowf.Close()
+  defer passwdf.Close()
+
+  if serr != nil {
+    return serr
+  }
+
+  if perr != nil {
+    return perr
+  }
+
+  fmt.Println("Checking if user exists")
+
+  reg := regexp.MustCompile("^" + o.Username() + ":.*")
+  found := reg.MatchReader(bufio.NewReader(shadowf)) || reg.MatchReader(bufio.NewReader(passwdf))
+
+  if found {
+    return fmt.Errorf("User %s already exists in container at %s", o.Username(), root)
+  }
+
+  fmt.Println("Appending user")
+
+  _, serr = shadowf.WriteString(o.BuildEtcShadowEntry())
+  _, perr = passwdf.WriteString(o.BuildEtcPasswdEntry())
+
+  if serr != nil || perr != nil {
+    return fmt.Errorf("Error writing user: %s %s", serr, perr)
+  }
+
+  return nil
+
+}
+
+func LoadUsers(root string) OSUsers {
+  var users OSUsers
 
   shadowf, serr := os.Open(path.Join(root, "etc", "shadow"))
   passwdf, perr := os.Open(path.Join(root, "etc", "passwd"))
+  defer shadowf.Close()
+  defer passwdf.Close()
 
-  var pwentries, shadowentries [][]string
+  var shadowentries [][]string
 
   if serr != nil || perr != nil {
     return users
@@ -50,7 +111,7 @@ func LoadUsers(root string) []*OSUser {
       log.Fatal(err)
     }
 
-    append(shadowentries, record)
+    shadowentries = append(shadowentries, record)
   }
 
   passwdreader := csv.NewReader(passwdf)
@@ -65,67 +126,16 @@ func LoadUsers(root string) []*OSUser {
       log.Fatal(err)
     }
 
-    for shadowentry := range shadowentries {
+    for _, shadowentry := range shadowentries {
       if shadowentry[0] == record[0] {
-        append(users, OSUser{shadowentry, entry})
+        found_user := new(OSUser)
+        found_user.shadowEntry = shadowentry
+        found_user.passwdEntry = record
+        users = append(users, found_user)
         break
       }
     }
   }
-}
 
-
-func ReadPasswdEntry(r []string) (p *PasswdEntry) {
-    p = new(PasswdEntry)
-
-    p.Name = r[0]
-    p.Uid, _ = strconv.Atoi(r[2])
-    p.Gid, _ = strconv.Atoi(r[3])
-    p.Fullname = r[4]
-    p.Home = r[5]
-    p.Shell = r[6]
-
-    return p
-}
-
-func ReadEtcPasswd(path string) []*PasswdEntry {
-    var entries []*PasswdEntry
-
-    f, err := os.Open(path)
-
-    if err != nil {
-        return entries
-    }
-
-    csvreader := csv.NewReader(f)
-    csvreader.Comma = ':'
-
-    for {
-        record, err := csvreader.Read()
-        if err != nil {
-            if err == io.EOF {
-                break
-            }
-            log.Fatal(err)
-        }
-
-        entries = append(entries, ReadPasswdEntry(record))
-    }
-
-    return entries
-}
-
-func (c Container) AddHostUser(u system.SystemUser) {
-    etcShadowPath := path.Join(c.Location, c.Name, "etc", "shadow")
-    etcPasswdPath := path.Join(c.Location, c.Name, "etc", "passwd")
-    //etcGroupsPath := path.Join(c.Location, c.Name, "etc", "groups")
-
-    uids := strconv.Itoa(u.Uid)
-    gids := strconv.Itoa(u.Gid)
-
-    shadow, _ := os.OpenFile(etcShadowPath, os.O_APPEND|os.O_WRONLY, 0600)
-    shadow.WriteString(u.Name + ":" + u.Pwhash + ":" + "14675" + ":" + "99999" + ":" + "99999" + ":" + "7" + ":::")
-
-    passwd, _ := os.OpenFile(etcPasswdPath, os.O_APPEND|os.O_WRONLY, 0600)
-    passwd.WriteString(u.Name + ":x:" + uids + ":" + gids + "::" + "/home/" + u.Name + ":" + u.Shell)
+  return users
 }

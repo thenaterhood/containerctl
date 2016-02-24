@@ -5,6 +5,7 @@ import(
     "os"
     "path"
     "path/filepath"
+    "github.com/thenaterhood/containerctl/system"
 )
 
 type Container interface {
@@ -13,6 +14,7 @@ type Container interface {
   Start() error
   Stop() error
   Exec(args ...string) error
+  UpdateUser(*system.OSUser) error
 
   Name() string
   Location() string

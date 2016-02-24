@@ -8,6 +8,7 @@ import(
     "strings"
     "time"
     "github.com/thenaterhood/containerctl/systemd"
+    "github.com/thenaterhood/containerctl/system"
 )
 
 // A generic container type, implementing basic methods for handling
@@ -60,6 +61,7 @@ func (c GenericContainer) createMachineId() error {
       uuid := string(uuidbytes[:37])
       var machineid *os.File
       machineid, err = os.OpenFile(path.Join(dir, "etc", "machine-id"), os.O_WRONLY, 0600)
+      defer machineid.Close()
       machineid.WriteString(strings.Replace(uuid, "-", "", -1))
     }
 
@@ -95,5 +97,10 @@ func (c GenericContainer) Stop() error {
   }
 
   err := systemd.RunMachinectlCmd("poweroff", c.Name())
+  return err
+}
+
+func (c GenericContainer) UpdateUser(user *system.OSUser) error {
+  err := user.UpdateEntry(path.Join(c.Location(), c.Name()))
   return err
 }
