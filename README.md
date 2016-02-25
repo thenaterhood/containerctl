@@ -24,6 +24,12 @@ $ containerctl create-arch YourContainer
 # Create and install a Debian container named YourContainer
 $ containerctl create-debian YourContainer
 
+# Copy a user from the host to the container (and create its home)
+$ containerctl copy-user <host user> YourContainer
+
+# Copy a user's /etc/passwd and /etc/shadow entries to the container
+$ containerctl copy-user-info <host user> YourContainer
+
 # Stop, destroy, and delete a container
 $ containerctl destroy YourContainer
 ```
