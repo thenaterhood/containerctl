@@ -39,7 +39,7 @@ func (c GenericContainer) Uuid() string {
 }
 
 func (c GenericContainer) Create() error {
-    err := os.Mkdir(path.Join(c.Location(), c.Name()), 0700)
+    err := os.Mkdir(path.Join(c.Location(), c.Name()), 0755)
     return err
 }
 
@@ -103,4 +103,8 @@ func (c GenericContainer) Stop() error {
 func (c GenericContainer) UpdateUser(user *system.OSUser) error {
   err := user.UpdateEntry(path.Join(c.Location(), c.Name()))
   return err
+}
+
+func (c GenericContainer) CreateUser(user *system.OSUser) error {
+  return user.CreateUser(path.Join(c.Location(), c.Name()))
 }

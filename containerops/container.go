@@ -15,6 +15,7 @@ type Container interface {
   Stop() error
   Exec(args ...string) error
   UpdateUser(*system.OSUser) error
+  CreateUser(*system.OSUser) error
 
   Name() string
   Location() string

@@ -48,12 +48,27 @@ func main() {
         }
 
         for _, c := range on_containers {
-          err := c.UpdateUser(user)
+          err := c.CreateUser(user)
           if err != nil {
             fmt.Println(err)
           }
         }
 
+        case
+        "copy-user-info":
+        known_users := system.LoadUsers("/")
+        user := known_users.Find(os.Args[2])
+        if user == nil {
+          fmt.Println("User does not exist on host")
+          break
+        }
+
+        for _, c := range on_containers {
+          err := c.UpdateUser(user)
+          if err != nil {
+            fmt.Println(err)
+          }
+        }
 
         case
         "create-arch":

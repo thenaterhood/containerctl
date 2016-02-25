@@ -8,6 +8,7 @@ import(
     "regexp"
     "bufio"
     "strings"
+    "strconv"
     "fmt"
     "path"
 )
@@ -19,6 +20,28 @@ type OSUser struct {
 
 func (o OSUser) Username() string {
   return o.shadowEntry[0]
+}
+
+func (o OSUser) Uid() int {
+  uid, _ := strconv.Atoi(o.passwdEntry[2])
+  return uid
+}
+
+func (o OSUser) Gid() int {
+  gid, _ := strconv.Atoi(o.passwdEntry[3])
+  return gid
+}
+
+func (o OSUser) Home() string {
+  return o.passwdEntry[5]
+}
+
+func (o OSUser) Shell() string {
+  return o.passwdEntry[6]
+}
+
+func (o OSUser) SetShell(sh string) {
+  o.passwdEntry[6] = sh
 }
 
 type OSUsers []*OSUser
@@ -44,6 +67,27 @@ func (o OSUser) BuildEtcPasswdEntry() string {
   return strings.Join(o.passwdEntry, ":")
 }
 
+func (o OSUser) CreateUser(root string) error {
+  shell := o.Shell()
+
+  _, err := os.Stat(path.Join(root, shell))
+  if os.IsNotExist(err) {
+    o.SetShell("/bin/bash")
+  }
+
+  err = o.UpdateEntry(root)
+
+  if err != nil {
+    return err
+  }
+
+  homedir := o.Home()
+  err = os.MkdirAll(path.Join(root, homedir), 0700)
+  err = os.Chown(path.Join(root, homedir), o.Uid(), o.Gid())
+
+  return err
+}
+
 func (o OSUser) UpdateEntry(root string) error {
   shadowpath := path.Join(root, "etc", "shadow")
   passwdpath := path.Join(root, "etc", "passwd")
@@ -63,16 +107,12 @@ func (o OSUser) UpdateEntry(root string) error {
     return perr
   }
 
-  fmt.Println("Checking if user exists")
-
   reg := regexp.MustCompile("^" + o.Username() + ":.*")
   found := reg.MatchReader(bufio.NewReader(shadowf)) || reg.MatchReader(bufio.NewReader(passwdf))
 
   if found {
     return fmt.Errorf("User %s already exists in container at %s", o.Username(), root)
   }
-
-  fmt.Println("Appending user")
 
   _, serr = shadowf.WriteString(o.BuildEtcShadowEntry())
   _, perr = passwdf.WriteString(o.BuildEtcPasswdEntry())
